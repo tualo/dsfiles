@@ -7,8 +7,9 @@ use Tualo\Office\Basic\IRoute;
 use Tualo\Office\DS\DSReadRoute;
 use Tualo\Office\DS\DSFileHelper;
 use Tualo\Office\DS\DSTable;
-use Gears\Pdf;
+use TualoPDFGear\Pdf;
 
+use Symfony\Component\Process\Process;
 
 class Convert implements IRoute{
     public static function register(){
@@ -37,20 +38,51 @@ class Convert implements IRoute{
                 list($dataprefix,$content) = explode(',',$dbcontent);
 
                 App::contenttype($mime);
+                $file = App::get('tempPath') . '/' . 'ht_temp.docx';
+                file_put_contents($file,base64_decode($content));
 
+                if (!file_exists(App::get('tempPath').'/gears-pdf-libreoffice')){
+                    
+                mkdir(App::get('tempPath').'/gears-pdf-libreoffice',0777,true);
+            }
+            if (!file_exists(App::get('tempPath').'/libreoffice')){
+                mkdir(App::get('tempPath').'/libreoffice',0777,true);
+            }
+                $cmd =
+			[
+				'/usr/bin/libreoffice',
+				'--headless',
 
-                $file = App::get('tempPath') . '/' . '.ht_temp.docx';
-                Pdf::convert($file, $file.'.pdf');
+				'-env:UserInstallation=file://'.App::get('tempPath') . '/gears-pdf-libreoffice',
+				'--convert-to pdf', //:writer_pdf_Export',
+				'--outdir "'.App::get('tempPath').'/libreoffice'.'"',
+				'"'.App::get('tempPath') . '/' . 'ht_temp.docx'.'"'
+            ];
 
-                // application/vnd.openxmlformats-officedocument.wordprocessingml.document
-                // header('Content-Disposition: attachment; filename="'.$name.'"');
+            $process = new Process($cmd);
+            $process->run();
+            if (!file_exists(App::get('tempPath').'/libreoffice/ht_temp.pdf')){
+                throw new \RuntimeException($process->getErrorOutput());
+            }
 
-                App::body(file_get_contents($file.'.pdf'));
+                App::contenttype('application/pdf');
+
+                App::body(file_get_contents(App::get('tempPath').'/libreoffice/ht_temp.pdf'));
                 unlink($file);
-                unlink($file.'.pdf');
-                Route::$finished=true;
+                unlink(App::get('tempPath').'/libreoffice/ht_temp.pdf');
+                
+                // unlink($file.'.pdf');
 
-            }catch(Exception $e){
+                Route::$finished=true;
+                
+            }catch(\RuntimeException $e){
+                echo "RuntimeException";
+                var_dump($e);
+                App::contenttype('application/json');
+                App::result('msg', $e->getMessage());
+            }catch(\Exception $e){
+                echo 12;
+                var_dump($e);
                 App::contenttype('application/json');
                 App::result('msg', $e->getMessage());
             }
