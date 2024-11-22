@@ -50,17 +50,18 @@ class Convert implements IRoute{
             }
                 $cmd =
 			[
-				'/usr/bin/libreoffice',
-				'--headless',
+                '/usr/bin/libreoffice',
+                '--headless',
 
-				'-env:UserInstallation=file://'.App::get('tempPath') . '/gears-pdf-libreoffice',
-				'--convert-to pdf', //:writer_pdf_Export',
-				'--outdir "'.App::get('tempPath').'/libreoffice'.'"',
-				'"'.App::get('tempPath') . '/' . 'ht_temp.docx'.'"'
+                '-env:UserInstallation=file://'.App::get('tempPath') . '/gears-pdf-libreoffice',
+                '--convert-to','pdf', //:writer_pdf_Export',
+                '--outdir',''.App::get('tempPath').'/libreoffice'.'',
+                ''.App::get('tempPath') . '/' . 'ht_temp.docx'.''
             ];
 
             $process = new Process($cmd);
             $process->run();
+            App::result('msg_cmd_out', $process->getOutput());
             if (!file_exists(App::get('tempPath').'/libreoffice/ht_temp.pdf')){
                 throw new \RuntimeException($process->getErrorOutput());
             }
@@ -76,13 +77,11 @@ class Convert implements IRoute{
                 Route::$finished=true;
                 
             }catch(\RuntimeException $e){
-                echo "RuntimeException";
-                var_dump($e);
+                
                 App::contenttype('application/json');
                 App::result('msg', $e->getMessage());
             }catch(\Exception $e){
-                echo 12;
-                var_dump($e);
+                
                 App::contenttype('application/json');
                 App::result('msg', $e->getMessage());
             }
